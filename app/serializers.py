@@ -17,9 +17,21 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class PostSerializer(serializers.ModelSerializer):
 
-    author = AuthorSerializer(required=False)
     category = CategorySerializer(required=False)
+    author = AuthorSerializer(required=False, read_only=True)
 
     class Meta:
         model = Post
-        fields = '__all__'
+        fields = ['title', 'slug', 'content', 'status', 'author', 'updated', 'publication_date',
+        'category']
+
+    def create(self, validated_data):
+        category = validated_data.pop('category')
+
+        try:
+            cat = Category.objects.get(name=category['name'])
+        except Category.DoesNotExist:
+            cat = Category.objects.create(**category)
+
+        post = Post.objects.create(category=cat, **validated_data)
+        return post
