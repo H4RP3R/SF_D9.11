@@ -1,0 +1,6 @@
+{
+    "name": "DRF API",
+    "description": "",
+    "image": "heroku/python",
+    "keywords": ["python", "django", "DRF"]
+}
