@@ -11,11 +11,12 @@ class Post(models.Model):
     updated = models.DateTimeField(default=timezone.now)
     publication_date = models.DateTimeField(default=timezone.now)
     category = models.ForeignKey('Category', on_delete=models.SET_DEFAULT, blank=True, null=True,
-                                 default=None)
+                                 default=None, related_name='posts')
+
     author = models.ForeignKey(User, null=True, default=None, on_delete=models.CASCADE)
 
     def __str__(self):
-        return f'{self.title} ({self.publication_date})'
+        return f'{self.title} ({self.publication_date:%Y-%m-%d %H:%M})'
 
 
 class Category(models.Model):
