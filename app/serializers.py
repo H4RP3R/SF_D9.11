@@ -28,8 +28,6 @@ class CategorySerializerWithPosts(serializers.ModelSerializer):
 class PostSerializer(serializers.ModelSerializer):
 
     category = CategorySerializer(required=False)
-    author = serializers.ChoiceField(
-        choices=[(user.username, user.username) for user in User.objects.all()])
 
     class Meta:
         model = Post
@@ -44,6 +42,42 @@ class PostSerializer(serializers.ModelSerializer):
             cat = Category.objects.create(**category)
 
         username = validated_data.pop('author')
-        author = User.objects.get(username=username)
+        try:
+            author = User.objects.get(username=username)
+        except User.DoesNotExist:
+            author = None
+
         post = Post.objects.create(category=cat, author=author, **validated_data)
         return post
+
+    @property  # dynamically updates choices in the author field
+    def author(self):
+        return serializers.ChoiceField(required=True, blank=False,
+                                       choices=[(user.username, user.username) for user in User.objects.all()])
+
+    def to_representation(self, instance):
+        if instance.author:
+            author = {
+                'id': instance.author.id,
+                'username': instance.author.username
+            }
+        else:
+            author = None
+
+        data = {
+            'id': instance.id,
+            'title': instance.title,
+            'slug': instance.slug,
+            'content': instance.content,
+            'status': instance.status,
+            'updated': instance.updated,
+            'publication_date': instance.publication_date,
+            'author': author,
+            'category': {
+                'id': instance.category.id,
+                'slug': instance.category.slug,
+                'name': instance.category.name
+            }
+
+        }
+        return data
