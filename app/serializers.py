@@ -5,15 +5,25 @@ import json
 
 
 class AuthorSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = User
         fields = ['id', 'username']
 
 
 class CategorySerializer(serializers.ModelSerializer):
+
+    name = serializers.CharField(max_length=255, required=False)
+    slug = serializers.SlugField(required=False)
+
     class Meta:
         model = Category
         fields = '__all__'
+
+    def create(self, validated_data):
+        if validated_data['name'] and validated_data['slug']:
+            return Category.objects.create(**validated_data)
+        return None
 
 
 class CategorySerializerWithPosts(serializers.ModelSerializer):
@@ -27,7 +37,7 @@ class CategorySerializerWithPosts(serializers.ModelSerializer):
 
 class PostSerializer(serializers.ModelSerializer):
 
-    category = CategorySerializer(required=False)
+    category = CategorySerializer(required=False, allow_null=True)
 
     class Meta:
         model = Post
@@ -36,10 +46,13 @@ class PostSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         category = validated_data.pop('category')
-        try:
-            cat = Category.objects.get(name=category['name'])
-        except Category.DoesNotExist:
-            cat = Category.objects.create(**category)
+        if 'name' in category:
+            try:
+                cat = Category.objects.get(name=category['name'])
+            except Category.DoesNotExist:
+                cat = Category.objects.create(**category)
+        else:
+            cat = None
 
         username = validated_data.pop('author')
         try:
@@ -53,16 +66,26 @@ class PostSerializer(serializers.ModelSerializer):
     @property  # dynamically updates choices in the author field
     def author(self):
         return serializers.ChoiceField(required=True, blank=False,
-                                       choices=[(user.username, user.username) for user in User.objects.all()])
+                                       choices=[(user.username, user.username)
+                                                for user in User.objects.all()])
 
     def to_representation(self, instance):
         if instance.author:
             author = {
                 'id': instance.author.id,
-                'username': instance.author.username
+                'username': instance.author.username,
             }
         else:
             author = None
+
+        if instance.category:
+            category = {
+                'id': instance.category.id,
+                'slug': instance.category.slug,
+                'name': instance.category.name,
+            }
+        else:
+            category = None
 
         data = {
             'id': instance.id,
@@ -73,11 +96,6 @@ class PostSerializer(serializers.ModelSerializer):
             'updated': instance.updated,
             'publication_date': instance.publication_date,
             'author': author,
-            'category': {
-                'id': instance.category.id,
-                'slug': instance.category.slug,
-                'name': instance.category.name
-            }
-
+            'category': category,
         }
         return data
